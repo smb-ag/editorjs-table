@@ -257,17 +257,28 @@ export class TableConstructor {
     if (!this._isToolbar(event.target)) {
       return;
     }
+
+    /** If event has transmitted data (coords of mouse) */
+    const detailHasData = isNaN(event.detail) && event.detail !== null;
+
     let typeCoord;
 
-    if (this._activatedToolBar === this._horizontalToolBar) {
+    if (detailHasData && event.detail.action === 'minus') {
+      if (this._activatedToolBar === this._horizontalToolBar) {
+        this._deleteRow();
+        typeCoord = 'y';
+      } else {
+        this._deleteColumn();
+        typeCoord = 'x';
+      }
+      return false;
+    } else if (this._activatedToolBar === this._horizontalToolBar) {
       this._addRow();
       typeCoord = 'y';
     } else {
       this._addColumn();
       typeCoord = 'x';
     }
-    /** If event has transmitted data (coords of mouse) */
-    const detailHasData = isNaN(event.detail) && event.detail !== null;
 
     if (detailHasData) {
       const containerCoords = getCoords(this._table.htmlElement);
@@ -368,6 +379,32 @@ export class TableConstructor {
     }
 
     this._table.addColumn(index);
+  }
+
+  /**
+   * deletes row in table
+   * @private
+   */
+  _deleteRow() {
+    const indicativeRow = this._hoveredCell.closest('TR');
+    // let index = this._getHoveredSideOfContainer();
+
+    this._table.deleteRow(indicativeRow);
+  }
+
+  /**
+   * deletes row in table
+   * @private
+   */
+  _deleteColumn() {
+    const indicativeColumn = this._hoveredCell.closest('TD');
+
+    console.log('indicativeColumn: ', indicativeColumn);
+    if (indicativeColumn) {
+      const tdIndexClassName = indicativeColumn.classList[1];
+
+      this._table.deleteColumn(tdIndexClassName);
+    }
   }
 
   /**

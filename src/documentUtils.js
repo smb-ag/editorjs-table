@@ -85,3 +85,73 @@ export function getSideByCoords(coords, x, y) {
 
   return side;
 }
+
+/**
+ * get top, right, bottom, left rect offset
+ * @param  HTMLElement
+ * @param  HTMLElement
+ * @return {json}
+ */
+export function getRectOffset(element1, element2) {
+  if (!element1 || !element2) {
+    return { topOffset: 0, leftOffset: 0, rightOffset: 0, bottomOffset: 0 };
+  }
+
+  const e1 = element1.getBoundingClientRect();
+  const e2 = element2.getBoundingClientRect();
+
+  const topOffset = e2.top - e1.top;
+  const leftOffset = e2.left - e1.left;
+  const rightOffset = e2.right - e1.right;
+  const bottomOffset = e2.bottom - e1.bottom;
+
+  return { topOffset, leftOffset, rightOffset, bottomOffset };
+}
+
+/**
+ * get current table tag from svg button
+ * @param event - HTMLElementEvent
+ * @return {string}
+ */
+export function getCurTableFromButton(event) {
+  const list = event.target.parentElement.parentElement.parentElement.parentElement.childNodes;
+
+  let table = null;
+
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].nodeName === 'TABLE') {
+      table = list[i];
+      break;
+    }
+  }
+
+  return table;
+}
+
+/**
+ * debounce function
+ * @param func - function to exec
+ * @param wait - m-sec to wait
+ * @return {string}
+ */
+export function debounce(func, wait, immediate) {
+  var timeout;
+
+  return function executedFunction() {
+    var context = this;
+    var args = arguments;
+
+    var later = function () {
+      timeout = null;
+      if (!immediate) func.apply(context, args);
+    };
+
+    var callNow = immediate && !timeout;
+
+    clearTimeout(timeout);
+
+    timeout = setTimeout(later, wait);
+
+    if (callNow) func.apply(context, args);
+  };
+}

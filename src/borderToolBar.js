@@ -1,6 +1,12 @@
 import './styles/border-toolbar.pcss';
 import svgPlusButton from './img/plus.svg';
-import {create} from './documentUtils';
+import svgMunusButton from './img/minus.svg';
+import {
+  create,
+  getRectOffset,
+  getCurTableFromButton,
+  debounce
+} from './documentUtils';
 
 const CSS = {
   highlightingLine: 'tc-toolbar',
@@ -9,10 +15,18 @@ const CSS = {
   horizontalHighlightingLine: 'tc-toolbar__shine-line--hor',
   verticalToolBar: 'tc-toolbar--ver',
   verticalHighlightingLine: 'tc-toolbar__shine-line--ver',
+  mask: 'tc-toolbar__mask',
+  maskAdd: 'tc-toolbar__mask--add',
+  maskDelete: 'tc-toolbar__mask--delete',
+  horizontalMask: 'tc-toolbar__mask--hor',
+  verticalMask: 'tc-toolbar__mask--ver',
   plusButton: 'tc-toolbar__plus',
   horizontalPlusButton: 'tc-toolbar__plus--hor',
   verticalPlusButton: 'tc-toolbar__plus--ver',
-  area: 'tc-table__area',
+  minusButton: 'tc-toolbar__minus',
+  horizontalMinusButton: 'tc-toolbar__minus--hor',
+  verticalMinusButton: 'tc-toolbar__minus--ver',
+  area: 'tc-table__area'
 };
 
 /**
@@ -24,8 +38,15 @@ class BorderToolBar {
    */
   constructor() {
     this._plusButton = this._generatePlusButton();
+    this._minusButton = this._generateMinusButton();
     this._highlightingLine = this._generateHighlightingLine();
-    this._toolbar = this._generateToolBar([this._plusButton, this._highlightingLine]);
+    this._mask = this._generateToolBarMask();
+    this._toolbar = this._generateToolBar([
+      this._plusButton,
+      this._minusButton,
+      this._highlightingLine,
+      this._mask
+    ]);
   }
 
   /**
@@ -66,12 +87,58 @@ class BorderToolBar {
     const button = create('div', [CSS.plusButton]);
 
     button.innerHTML = svgPlusButton;
+
     button.addEventListener('click', (event) => {
       event.stopPropagation();
+
       const e = new CustomEvent('click', {'detail': {'x': event.pageX, 'y': event.pageY}, 'bubbles': true});
 
       this._toolbar.dispatchEvent(e);
     });
+
+    /*
+     * button.addEventListener('mouseover', debounce((event) => {
+     *   event.stopPropagation();
+     *   this._mask.classList.add(CSS.maskAdd);
+     *   this._mask.style.display = 'block';
+     * }, 300));
+     */
+
+    button.addEventListener('mouseout', debounce(event => {
+      event.stopPropagation();
+      this._mask.classList.remove(CSS.maskDelete);
+      this._mask.classList.remove(CSS.maskAdd);
+      this._mask.style.display = 'none';
+    }, 300));
+
+    return button;
+  }
+
+  /**
+   * Generates a menu button to delete rows and columns.
+   * @return {HTMLElement}
+   */
+  _generateMinusButton() {
+    const button = create('div', [CSS.minusButton]);
+
+    button.innerHTML = svgMunusButton;
+    button.style = 'transform: rotate(45deg)';
+
+    button.addEventListener('click', event => {
+      event.stopPropagation()
+
+      const e = new CustomEvent('click', {'detail': {'x': event.pageX, 'y': event.pageY, action: 'minus'}, bubbles: true});
+
+      this._toolbar.dispatchEvent(e);
+    });
+
+    button.addEventListener('mouseout', debounce(event => {
+      event.stopPropagation();
+      this._mask.classList.remove(CSS.maskDelete);
+      this._mask.classList.remove(CSS.maskAdd);
+      this._mask.style.display = 'none';
+    }, 300));
+
     return button;
   }
 
@@ -85,10 +152,8 @@ class BorderToolBar {
 
     line.addEventListener('click', (event) => {
       event.stopPropagation();
-      const e = new CustomEvent('click', {'bubbles': true});
-
-      this._toolbar.dispatchEvent(e);
     });
+
     return line;
   }
 
@@ -102,11 +167,22 @@ class BorderToolBar {
     const bar = create('div', [CSS.hidden], null, children);
 
     bar.addEventListener('mouseleave', (event) => {
-        this._recalcMousePos(event);
-      }
-    );
+      this._recalcMousePos(event);
+    });
 
     return bar;
+  }
+
+  /**
+   * @private
+   *
+   * Generates the main component of the class
+   * @param {Element[]} children - child elements of toolbar
+   */
+  _generateToolBarMask() {
+    const mask = create('div', [CSS.mask]);
+
+    return mask;
   }
 
   /**
@@ -121,6 +197,7 @@ class BorderToolBar {
 
     if (area !== null && area.classList.contains(CSS.area)) {
       const e = new MouseEvent('mouseover', {clientX: event.pageX, clientY: event.pageY});
+
       area.dispatchEvent(e);
     }
   }
@@ -138,7 +215,43 @@ export class HorizontalBorderToolBar extends BorderToolBar {
 
     this._toolbar.classList.add(CSS.horizontalToolBar);
     this._plusButton.classList.add(CSS.horizontalPlusButton);
+    this._minusButton.classList.add(CSS.horizontalMinusButton);
     this._highlightingLine.classList.add(CSS.horizontalHighlightingLine);
+    this._mask.classList.add(CSS.horizontalMask);
+
+    this._plusButton.addEventListener('mouseover', debounce(event => {
+      event.stopPropagation();
+
+      this._mask.classList.add(CSS.maskAdd);
+      this._mask.style.top = '0';
+      this._mask.style.left = '0';
+
+      this._mask.style.display = 'block';
+    }, 300));
+
+    this._minusButton.addEventListener('mouseover', debounce(event => {
+      event.stopPropagation();
+
+      const table = getCurTableFromButton(event);
+
+      const { topOffset, rightOffset, bottomOffset } = getRectOffset(
+        table, event.target.parentElement
+      );
+
+      // if is left border OR bottom border OR top border, should add offset
+      this._mask.classList.add(CSS.maskDelete);
+
+      if (topOffset === -12 && rightOffset === 10 && bottomOffset !== 10) {
+        // console.log('is top border');
+        this._mask.style.top = '0';
+        this._mask.style.left = '0';
+      } else if (topOffset !== -12 && rightOffset === 10 && bottomOffset === 10) {
+        this._mask.style.top = '-16px';
+        this._mask.style.left = '0';
+        // console.log('is hor bottom');
+      }
+      this._mask.style.display = 'block';
+    }, 300));
   }
 
   /**
@@ -146,7 +259,8 @@ export class HorizontalBorderToolBar extends BorderToolBar {
    * @param {number} y - coord
    */
   showIn(y) {
-    const halfHeight = Math.floor(Number.parseInt(window.getComputedStyle(this._toolbar).height) / 2);
+    // const halfHeight = Math.floor(Number.parseInt(window.getComputedStyle(this._toolbar).height) / 2);
+    const halfHeight = Math.floor(Number.parseInt(window.getComputedStyle(this._toolbar).height))
 
     this._toolbar.style.top = (y - halfHeight) + 'px';
     this.show();
@@ -165,7 +279,41 @@ export class VerticalBorderToolBar extends BorderToolBar {
 
     this._toolbar.classList.add(CSS.verticalToolBar);
     this._plusButton.classList.add(CSS.verticalPlusButton);
+    this._minusButton.classList.add(CSS.verticalMinusButton);
     this._highlightingLine.classList.add(CSS.verticalHighlightingLine);
+    this._mask.classList.add(CSS.verticalMask);
+
+    this._plusButton.addEventListener('mouseover', debounce(event => {
+      event.stopPropagation();
+
+      this._mask.classList.add(CSS.maskAdd);
+      this._mask.style.top = '0';
+      this._mask.style.left = '0';
+
+      this._mask.style.display = 'block';
+    }, 300));
+
+    this._minusButton.addEventListener('mouseover', debounce(event => {
+      event.stopPropagation();
+
+      const table = getCurTableFromButton(event);
+
+      const { topOffset, leftOffset, rightOffset, bottomOffset } = getRectOffset(
+        table, event.target.parentElement
+      );
+
+      this._mask.classList.add(CSS.maskDelete);
+
+      if (leftOffset === -12 && bottomOffset === 10) {
+        this._mask.style.left = '0';
+        // console.log('is left border');
+      } else if (topOffset !== -12 && rightOffset === 10 && bottomOffset === 10) {
+        this._mask.style.left = '-16px';
+        // console.log('is ver bottom');
+      }
+
+      this._mask.style.display = 'block';
+    }, 300));
   }
 
   /**
@@ -173,9 +321,10 @@ export class VerticalBorderToolBar extends BorderToolBar {
    * @param {number} x - coord
    */
   showIn(x) {
-    const halfWidth = Math.floor(Number.parseInt(window.getComputedStyle(this._toolbar).width) / 2);
+    // const halfWidth = Math.floor(Number.parseInt(window.getComputedStyle(this._toolbar).width) / 2);
+    const halfWidth = Math.floor(Number.parseInt(window.getComputedStyle(this._toolbar).width))
 
-    this._toolbar.style.left = (x - halfWidth) + 'px';
+    this._toolbar.style.left = x - halfWidth + 'px';
     this.show();
   }
 }

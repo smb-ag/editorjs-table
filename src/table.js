@@ -7,6 +7,7 @@ const CSS = {
   cell: 'tc-table__cell',
   wrapper: 'tc-table__wrap',
   area: 'tc-table__area',
+  tdPrefix: 'td-index-'
 };
 
 /**
@@ -39,6 +40,8 @@ export class Table {
 
       this._fillCell(cell);
     }
+
+    this._rebuildCellIndex();
   };
 
   /**
@@ -51,8 +54,39 @@ export class Table {
     const row = this._table.insertRow(index);
 
     this._fillRow(row);
+
+    this._rebuildCellIndex();
+
     return row;
   };
+
+  /**
+   * delete coloumn
+   * @return {void}
+   */
+  deleteColumn(tdIndexClassName) {
+    const tds = this._table.querySelectorAll('.' + tdIndexClassName);
+
+    if (tds.length === 0) return false;
+
+    this._numberOfColumns -= 1;
+
+    for (let i = 0; i < tds.length; i++) {
+      tds[i].remove();
+    }
+
+    this._rebuildCellIndex();
+  }
+
+  /**
+   * delete row
+   * @return {void}
+   */
+  deleteRow(row) {
+    if (row) {
+      row.remove();
+    }
+  }
 
   /**
    * get html element of table
@@ -123,6 +157,25 @@ export class Table {
 
       this._fillCell(cell);
     }
+  }
+
+  /**
+   * @private
+   *
+   * hang necessary events
+   */
+  _rebuildCellIndex() {
+    const tbody = this._table.querySelector('tbody');
+
+    setTimeout(() => {
+      for (let rowIdx = 0; rowIdx < tbody.childNodes.length; rowIdx++) {
+        const tr = tbody.childNodes[rowIdx];
+
+        for (let rdIdx = 0; rdIdx < tr.childNodes.length; rdIdx++) {
+          tr.childNodes[rdIdx].className = 'tc-table__cell cell-index-' + rdIdx;
+        }
+      }
+    }, 100);
   }
 
   /**
