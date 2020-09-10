@@ -164,9 +164,9 @@ export class TableConstructor {
       this._leaveDetectArea(event);
     });
 
-    this._container.addEventListener('mouseover', (event) => {
-      this._mouseEnterInDetectArea(event);
-    });
+    // this._container.addEventListener('mouseover', (event) => {
+    //   this._mouseEnterInDetectArea(event);
+    // });
   }
 
   /**
@@ -271,6 +271,7 @@ export class TableConstructor {
         this._deleteColumn();
         typeCoord = 'x';
       }
+      this._hideToolBar();
       return false;
     } else if (this._activatedToolBar === this._horizontalToolBar) {
       this._addRow();
